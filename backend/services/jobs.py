@@ -41,12 +41,12 @@ async def _adzuna_au() -> List[dict]:
         return []
     out: List[dict] = []
     async with httpx.AsyncClient(timeout=20) as hc:
-        for page in (1, 2):
+        for page in (1, 2, 3, 4):
             try:
                 url = (
                     f"https://api.adzuna.com/v1/api/jobs/au/search/{page}"
                     f"?app_id={ADZUNA_APP_ID}&app_key={ADZUNA_APP_KEY}"
-                    f"&results_per_page=30&max_days_old=1&sort_by=date"
+                    f"&results_per_page=50&max_days_old=1&sort_by=date"
                 )
                 r = await hc.get(url)
                 if r.status_code != 200:
@@ -146,86 +146,25 @@ async def _themuse() -> List[dict]:
 
 
 def _seed_au_jobs() -> List[dict]:
-    """Curated seed of representative Australian roles linking to source search.
-    These represent the major AU job boards which block scraping. The user
-    can click through to the live search results on each board.
+    """Disabled: previously returned placeholder roles with non-specific URLs.
+    Removed because the apply links pointed to source search pages rather than
+    actual job postings — misleading for users.
+
+    All jobs in the feed now come from real, click-able APIs:
+    - Adzuna AU (live, with real redirect URLs to SEEK/Indeed/Jora/etc.)
+    - Remotive (live remote roles)
+    - The Muse (live tech/creative roles)
     """
-    now = _now()
-    boards = [
-        ("SEEK", "https://www.seek.com.au/jobs?daterange=1"),
-        ("LinkedIn", "https://www.linkedin.com/jobs/search/?location=Australia&f_TPR=r43200"),
-        ("Indeed", "https://au.indeed.com/jobs?fromage=1"),
-        ("Jora", "https://au.jora.com/j?sp=homepage&surl=0&q=&l=&age=1"),
-        ("CareerOne", "https://www.careerone.com.au/jobs?keywords=&location=Australia"),
-        ("Hays", "https://www.hays.com.au/job-search"),
-        ("Workforce Australia", "https://www.workforceaustralia.gov.au/individuals/jobs"),
-        ("Adzuna AU", "https://www.adzuna.com.au/search?qd=1"),
-        ("My Future", "https://myfuture.edu.au/career-insights/jobs"),
-        ("Toozly", "https://toozly.com/job-board/"),
-    ]
-    sample_roles = [
-        ("Graduate Software Engineer", "Atlassian", "Sydney, NSW", "$85,000-$95,000",
-         "Join Atlassian's graduate program. Build distributed systems in Python, Java, React. Mentorship, training, real ownership from day one.", True),
-        ("Junior Data Analyst", "Commonwealth Bank", "Sydney, NSW", "$75,000-$85,000",
-         "Work with SQL, Tableau, Python to deliver insights to retail banking. Suits recent graduates with strong stats foundation.", True),
-        ("Marketing Coordinator", "Canva", "Melbourne, VIC", "$70,000-$80,000",
-         "Support B2B marketing campaigns, content production, analytics. 1-2 yrs experience. Strong copywriting required.", False),
-        ("Mechanical Engineer Graduate", "BHP", "Perth, WA", "$95,000-$105,000",
-         "BHP Future Leaders Graduate Program. Mining operations, FIFO roster. Engineering degree, safety-first mindset.", True),
-        ("Frontend Developer", "REA Group", "Melbourne, VIC", "$110,000-$135,000",
-         "Build realestate.com.au features with React, TypeScript, Next.js. 3+ yrs frontend experience.", False),
-        ("Customer Success Manager", "Xero", "Remote / Australia", "$95,000-$115,000",
-         "Own a book of SMB clients. SaaS background preferred. Drive retention, expansion, and NPS.", False),
-        ("Cyber Security Analyst", "Telstra", "Brisbane, QLD", "$100,000-$120,000",
-         "SOC analyst, Tier 2. Splunk, MITRE ATT&CK, incident response. CISSP/OSCP a plus.", False),
-        ("Registered Nurse", "Royal Melbourne Hospital", "Melbourne, VIC", "$78,000-$92,000",
-         "Acute medical ward. AHPRA registration required. New grads welcome — structured first-year program.", True),
-        ("Product Manager", "Afterpay", "Sydney, NSW", "$160,000-$190,000",
-         "Own a payments product surface for 20M+ users. 5+ yrs PM, fintech background ideal.", False),
-        ("Business Analyst Graduate", "Deloitte", "Multiple AU cities", "$72,000-$82,000",
-         "Deloitte Consulting graduate intake 2026. Bachelor degree any discipline, analytical mindset, client-facing.", True),
-        ("DevOps Engineer", "Canva", "Sydney / Remote AU", "$140,000-$170,000",
-         "AWS, Kubernetes, Terraform. Build and scale platform for 200M+ users.", False),
-        ("Junior Accountant", "KPMG", "Sydney, NSW", "$68,000-$78,000",
-         "Audit graduate intake. CA pathway support, study leave, mentor program.", True),
-        ("UX Designer", "MYOB", "Melbourne, VIC", "$110,000-$130,000",
-         "Design financial software for Australian SMBs. Figma, research, prototyping. 3+ yrs.", False),
-        ("Civil Engineer", "Lendlease", "Sydney, NSW", "$95,000-$115,000",
-         "Infrastructure projects across NSW. Tier 1 contractor experience preferred.", False),
-        ("Disability Support Worker", "Aruma", "Brisbane, QLD", "$60,000-$72,000",
-         "Support adults with disability in community settings. Cert III/IV in Disability or equivalent.", False),
-    ]
-    out: List[dict] = []
-    import random
-    for i, (board, base_url) in enumerate(boards):
-        for j, (title, company, loc, sal, desc, grad) in enumerate(sample_roles):
-            # vary which board surfaces which roles
-            if (i + j) % 3 != 0:
-                continue
-            offset_h = (i * 2 + j) % 12  # within last 12 hours
-            out.append({
-                "source": board,
-                "title": title,
-                "company": company,
-                "location": loc,
-                "salary": sal,
-                "description": desc,
-                "url": base_url,
-                "posted_at": now - timedelta(hours=offset_h, minutes=random.randint(0, 59)),
-                "job_type": "graduate" if grad else "full-time",
-                "is_graduate": grad,
-            })
-    return out
+    return []
 
 
 async def fetch_all_jobs() -> List[dict]:
     adz, rem, mus = await asyncio.gather(_adzuna_au(), _remotive(), _themuse())
-    seed = _seed_au_jobs()
     cutoff_12 = _now() - timedelta(hours=12)
     cutoff_7d = _now() - timedelta(days=7)
-    combined = adz + rem + mus + seed
+    combined = adz + rem + mus
     recent = [j for j in combined if j["posted_at"] >= cutoff_12]
     if len(recent) < 20:
         recent = [j for j in combined if j["posted_at"] >= cutoff_7d]
     recent.sort(key=lambda x: x["posted_at"], reverse=True)
-    return recent[:150]
+    return recent[:200]
