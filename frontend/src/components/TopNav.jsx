@@ -1,10 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
-import { Briefcase, FileText, KanbanSquare, Settings, LogOut, LayoutDashboard } from "lucide-react";
+import { Layers, FileText, KanbanSquare, Settings, LogOut, LayoutDashboard, UserCircle } from "lucide-react";
 
 const tabs = [
   { to: "/dashboard", label: "Jobs", icon: LayoutDashboard, testid: "nav-dashboard" },
+  { to: "/discover", label: "Discover", icon: Layers, testid: "nav-discover" },
   { to: "/resumes", label: "Resumes", icon: FileText, testid: "nav-resumes" },
+  { to: "/profile", label: "Profile", icon: UserCircle, testid: "nav-profile" },
   { to: "/tracker", label: "Tracker", icon: KanbanSquare, testid: "nav-tracker" },
   { to: "/settings", label: "Settings", icon: Settings, testid: "nav-settings" },
 ];

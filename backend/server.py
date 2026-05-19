@@ -95,6 +95,22 @@ class Preferences(BaseModel):
     salary_min: int = 0
     remote_ok: bool = True
     graduate_only: bool = False
+    daily_goal: int = 5
+
+
+class Profile(BaseModel):
+    user_id: str
+    phone: str = ""
+    linkedin: str = ""
+    github: str = ""
+    portfolio: str = ""
+    location_city: str = "Sydney"
+    visa_status: str = ""  # e.g. "Citizen", "PR", "482", "Working holiday"
+    expected_salary: str = ""
+    notice_period: str = ""
+    open_to_remote: bool = True
+    open_to_relocate: bool = False
+    short_pitch: str = ""
 
 
 # -------------------- Auth helpers --------------------
@@ -440,6 +456,67 @@ async def update_prefs(payload: dict, user: User = Depends(get_current_user)):
     payload.pop("user_id", None)
     await db.preferences.update_one({"user_id": user.user_id}, {"$set": payload}, upsert=True)
     return await db.preferences.find_one({"user_id": user.user_id}, {"_id": 0})
+
+
+# -------------------- Profile (1-click apply data) --------------------
+@api.get("/profile")
+async def get_profile(user: User = Depends(get_current_user)):
+    p = await db.profiles.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not p:
+        p = {
+            "user_id": user.user_id, "phone": "", "linkedin": "", "github": "", "portfolio": "",
+            "location_city": "Sydney", "visa_status": "", "expected_salary": "", "notice_period": "",
+            "open_to_remote": True, "open_to_relocate": False, "short_pitch": "",
+        }
+        await db.profiles.insert_one(p)
+        p = await db.profiles.find_one({"user_id": user.user_id}, {"_id": 0})
+    return p
+
+
+@api.put("/profile")
+async def update_profile(payload: dict, user: User = Depends(get_current_user)):
+    payload.pop("user_id", None)
+    await db.profiles.update_one({"user_id": user.user_id}, {"$set": payload}, upsert=True)
+    return await db.profiles.find_one({"user_id": user.user_id}, {"_id": 0})
+
+
+# -------------------- Activity / Streak --------------------
+@api.get("/activity")
+async def activity(user: User = Depends(get_current_user)):
+    """Return last 28 days of application counts + current streak + today's count."""
+    from collections import Counter
+    apps = await db.applications.find({"user_id": user.user_id}, {"_id": 0}).to_list(2000)
+    counts: dict = Counter()
+    for a in apps:
+        if a.get("status") in ("applied", "interview", "offer", "rejected"):
+            ts = a.get("updated_at") or a.get("created_at")
+            if isinstance(ts, str):
+                day = ts[:10]
+                counts[day] += 1
+    today = datetime.now(timezone.utc).date()
+    series = []
+    for i in range(27, -1, -1):
+        d = today - timedelta(days=i)
+        key = d.isoformat()
+        series.append({"date": key, "count": counts.get(key, 0)})
+    # streak: consecutive days ending today with count > 0
+    streak = 0
+    for i in range(0, 28):
+        d = today - timedelta(days=i)
+        if counts.get(d.isoformat(), 0) > 0:
+            streak += 1
+        else:
+            if i == 0:
+                streak = 0
+            break
+    prefs = await db.preferences.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    return {
+        "series": series,
+        "streak": streak,
+        "today": counts.get(today.isoformat(), 0),
+        "daily_goal": prefs.get("daily_goal", 5),
+        "total": sum(counts.values()),
+    }
 
 
 # -------------------- Stats --------------------

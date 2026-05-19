@@ -2,22 +2,28 @@ import { useEffect, useState } from "react";
 import { http } from "../lib/api";
 import TopNav from "../components/TopNav";
 import { toast } from "sonner";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, TrendingUp } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
 const COLS = [
-  { id: "saved", label: "Saved", bg: "bg-pastel-blue" },
-  { id: "applied", label: "Applied", bg: "bg-pastel-purple" },
-  { id: "interview", label: "Interview", bg: "match-medium" },
-  { id: "offer", label: "Offer", bg: "match-high" },
-  { id: "rejected", label: "Rejected", bg: "match-low" },
+  { id: "saved", label: "Saved", bg: "bg-pastel-blue", color: "#D6E4F0" },
+  { id: "applied", label: "Applied", bg: "bg-pastel-purple", color: "#E2D9F3" },
+  { id: "interview", label: "Interview", bg: "match-medium", color: "#FFEACC" },
+  { id: "offer", label: "Offer", bg: "match-high", color: "#D4F4E4" },
+  { id: "rejected", label: "Rejected", bg: "match-low", color: "#F8D7DA" },
 ];
 
 export default function Tracker() {
   const [apps, setApps] = useState([]);
+  const [activity, setActivity] = useState(null);
 
   const load = async () => {
-    const r = await http.get("/applications");
+    const [r, a] = await Promise.all([
+      http.get("/applications"),
+      http.get("/activity"),
+    ]);
     setApps(r.data);
+    setActivity(a.data);
   };
   useEffect(() => { load(); }, []);
 
@@ -34,6 +40,18 @@ export default function Tracker() {
     if (a && a.status !== status) move(a, status);
   };
 
+  const funnelData = COLS.map(c => ({
+    name: c.label,
+    count: apps.filter(a => a.status === c.id).length,
+    color: c.color,
+  }));
+
+  // activity series → last 14 days
+  const last14 = (activity?.series || []).slice(-14).map(s => ({
+    day: s.date.slice(5),
+    count: s.count,
+  }));
+
   return (
     <div className="min-h-screen">
       <TopNav />
@@ -41,6 +59,42 @@ export default function Tracker() {
         <div className="mb-6">
           <div className="label-overline">Application pipeline · {apps.length} total</div>
           <h1 className="font-display font-black text-3xl lg:text-4xl tracking-tighter">Tracker</h1>
+        </div>
+
+        {/* Funnel + Velocity */}
+        <div className="grid lg:grid-cols-2 gap-4 mb-8">
+          <div className="nb-card p-5" data-testid="funnel-chart">
+            <div className="flex items-center justify-between mb-2">
+              <div className="label-overline">Pipeline funnel</div>
+              <span className="text-xs text-[#525252] font-mono">{apps.length} applications</span>
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={funnelData} layout="vertical" margin={{left: 10, right: 30}}>
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80}
+                  tick={{fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 600}} />
+                <Tooltip cursor={{fill: 'rgba(0,0,0,0.04)'}} contentStyle={{border:'1.5px solid #1E1E1E', borderRadius:0, fontFamily:'JetBrains Mono'}}/>
+                <Bar dataKey="count" stroke="#1E1E1E" strokeWidth={1.5} label={{position:'right', fontFamily:'JetBrains Mono', fontSize:11, fill:'#0A0A0A'}}>
+                  {funnelData.map((entry, i) => <Cell key={i} fill={entry.color}/>)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="nb-card p-5" data-testid="velocity-chart">
+            <div className="flex items-center justify-between mb-2">
+              <div className="label-overline flex items-center gap-1.5"><TrendingUp size={12}/> Application velocity · 14d</div>
+              <span className="text-xs text-[#525252] font-mono">streak {activity?.streak ?? 0}d</span>
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={last14} margin={{left: -20, right: 5}}>
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontFamily:'JetBrains Mono', fontSize:9, fill:'#525252'}}/>
+                <YAxis axisLine={false} tickLine={false} tick={{fontFamily:'JetBrains Mono', fontSize:9, fill:'#525252'}} allowDecimals={false}/>
+                <Tooltip cursor={{fill:'rgba(0,0,0,0.04)'}} contentStyle={{border:'1.5px solid #1E1E1E', borderRadius:0, fontFamily:'JetBrains Mono'}}/>
+                <Bar dataKey="count" fill="#F2542D" stroke="#1E1E1E" strokeWidth={1.5}/>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">

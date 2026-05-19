@@ -76,8 +76,19 @@ export default function JobCard({ job }) {
         <Link to={`/jobs/${job.job_id}`} state={{ job }} className="nb-btn-outline text-xs" data-testid={`btn-view-${job.job_id}`}>
           View & Tailor
         </Link>
-        <a href={job.url} target="_blank" rel="noopener noreferrer"
-           className="nb-btn text-xs inline-flex items-center gap-1" data-testid={`btn-apply-${job.job_id}`}>
+        <a
+          href={job.url} target="_blank" rel="noopener noreferrer"
+          onClick={() => {
+            // Quick-apply: mark as applied in tracker
+            try {
+              fetch(`${process.env.REACT_APP_BACKEND_URL}/api/applications`, {
+                method: "POST", credentials: "include",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({job_id: job.job_id, status: "applied", resume_id: best?.resume_id}),
+              });
+            } catch {}
+          }}
+          className="nb-btn text-xs inline-flex items-center gap-1" data-testid={`btn-apply-${job.job_id}`}>
           Apply <ExternalLink size={12}/>
         </a>
       </div>

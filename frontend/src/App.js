@@ -3,7 +3,9 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import { Toaster } from "sonner";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
+import Discover from "./pages/Discover";
 import Resumes from "./pages/Resumes";
+import Profile from "./pages/Profile";
 import JobDetail from "./pages/JobDetail";
 import Tracker from "./pages/Tracker";
 import Settings from "./pages/Settings";
@@ -19,13 +21,14 @@ function ProtectedRoute({ children }) {
 
 function AppRouter() {
   const location = useLocation();
-  // synchronous check during render to prevent race
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
       <Route path="/resumes" element={<ProtectedRoute><Resumes /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/jobs/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
       <Route path="/tracker" element={<ProtectedRoute><Tracker /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
