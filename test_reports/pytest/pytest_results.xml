@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="7" skipped="0" tests="17" time="4.233" timestamp="2026-05-19T09:01:16.191031+00:00" hostname="agent-env-99fb246d-2c38-4016-a39b-83ee6fd02b27"><testcase classname="backend.tests.test_applymate_au" name="test_root" time="0.363" /><testcase classname="backend.tests.test_applymate_au" name="test_auth_me_unauth" time="0.135" /><testcase classname="backend.tests.test_applymate_au" name="test_auth_me_with_token" time="0.157" /><testcase classname="backend.tests.test_applymate_au" name="test_upload_resume" time="0.289" /><testcase classname="backend.tests.test_applymate_au" name="test_list_resumes" time="0.176" /><testcase classname="backend.tests.test_applymate_au" name="test_max_5_resumes" time="0.160" /><testcase classname="backend.tests.test_applymate_au" name="test_jobs_fetch" time="0.681"><failure message="AssertionError: Internal Server Error&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_applymate_au.py:95: in test_jobs_fetch
+    assert r.status_code == 200, r.text
+E   AssertionError: Internal Server Error
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_applymate_au" name="test_jobs_list" time="0.141"><failure message="assert 0 &gt; 0&#10; +  where 0 = len([])">backend/tests/test_applymate_au.py:103: in test_jobs_list
+    assert len(rows) &gt; 0
+E   assert 0 &gt; 0
+E    +  where 0 = len([])</failure></testcase><testcase classname="backend.tests.test_applymate_au" name="test_jobs_filter_graduate" time="0.132" /><testcase classname="backend.tests.test_applymate_au" name="test_match" time="0.175"><failure message="IndexError: list index out of range">backend/tests/test_applymate_au.py:120: in test_match
+    JOB_ID = (tech[0] if tech else rows[0])["job_id"]
+                                   ^^^^^^^
+E   IndexError: list index out of range</failure></testcase><testcase classname="backend.tests.test_applymate_au" name="test_cover_letter" time="0.131"><failure message="AssertionError: {&quot;detail&quot;:&quot;Job not found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code">backend/tests/test_applymate_au.py:129: in test_cover_letter
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"Job not found"}
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_applymate_au" name="test_create_application" time="0.168"><failure message="assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_applymate_au.py:139: in test_create_application
+    assert r.status_code == 200
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_applymate_au" name="test_list_applications" time="0.150"><failure message="assert False&#10; +  where False = any(&lt;generator object test_list_applications.&lt;locals&gt;.&lt;genexpr&gt; at 0x7f509264f030&gt;)">backend/tests/test_applymate_au.py:145: in test_list_applications
+    assert any(a["app_id"] == APP_ID for a in r.json())
+E   assert False
+E    +  where False = any(&lt;generator object test_list_applications.&lt;locals&gt;.&lt;genexpr&gt; at 0x7f509264f030&gt;)</failure></testcase><testcase classname="backend.tests.test_applymate_au" name="test_patch_application" time="0.153"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code">backend/tests/test_applymate_au.py:152: in test_patch_application
+    assert r.status_code == 200
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_applymate_au" name="test_preferences_get_put" time="0.282" /><testcase classname="backend.tests.test_applymate_au" name="test_stats" time="0.136" /><testcase classname="backend.tests.test_applymate_au" name="test_delete_resume" time="0.192" /></testsuite></testsuites>

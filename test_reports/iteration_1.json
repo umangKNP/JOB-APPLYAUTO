@@ -1,0 +1,40 @@
+{
+  "summary": "Backend regression tested. 10/17 pass. CRITICAL: /api/jobs/fetch crashes (offset-naive/aware datetime compare in services/jobs.py); /api/applications POST crashes (Mongo $set + $setOnInsert conflict on app_id). These cascade to job list empty, match, cover-letter, applications PATCH/list. Auth, resume upload+parse (Claude), preferences, stats, graduate filter all pass. Frontend not yet exercised due to backend job pipeline being broken.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/jobs/fetch", "issue": "500 TypeError: can't compare offset-naive and offset-aware datetimes. In services/jobs.py fetch_all_jobs() filter `j['posted_at'] >= cutoff_12`. _themuse() / _remotive() fallback `posted = _now()` is tz-aware, but `datetime.fromisoformat(j['publication_date'].replace('Z','+00:00'))` may still return naive when The Muse returns dates without Z/offset. Result: zero jobs ever saved, breaking entire job/match/cover-letter/application flow.", "priority": "CRITICAL"},
+      {"endpoint": "POST /api/applications", "issue": "500 pymongo.errors.WriteError: Updating the path 'app_id' would create a conflict at 'app_id'. server.py upsert uses both $set (which includes app_id via doc) AND $setOnInsert {app_id: aid}. MongoDB forbids both touching same field. Fix: drop app_id from $set dict (only set on insert).", "priority": "CRITICAL"},
+      {"endpoint": "POST /api/jobs/{id}/match & /cover-letter & GET /api/jobs", "issue": "Cascading failures because /jobs/fetch never succeeds -> jobs collection empty -> match/cover-letter return 404.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "services/llm.py parse_resume_ai", "issue": "Bare `except Exception as e:` with unused `e` variable; swallows all LLM errors silently. Consider logging."},
+      {"endpoint": "/api/auth/google set_cookie", "issue": "secure=True + samesite='none' is correct for cross-origin, but cookie also lacks domain attribute — verify it survives the preview proxy."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [{"flow": "Job feed / Match / Cover letter / Kanban", "issue": "All downstream UI features will appear empty/broken until backend jobs/fetch + applications POST bugs are fixed.", "affected_selectors": []}],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_applymate_au.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix services/jobs.py: normalise every job['posted_at'] to tz-aware UTC before filtering (e.g. `if posted.tzinfo is None: posted = posted.replace(tzinfo=timezone.utc)`).",
+    "Fix server.py POST /api/applications upsert: build the $set dict without app_id, keep $setOnInsert {app_id: aid, created_at: now}. e.g. set_fields = {k:v for k,v in doc.items() if k not in ('created_at','app_id')}.",
+    "After both fixes, rerun /app/backend/tests/test_applymate_au.py — should pass all 17. Then frontend e2e can be exercised."
+  ],
+  "critical_code_review_comments": [
+    "services/jobs.py — datetime tz handling fragile; harden parse fallback.",
+    "server.py POST /api/applications — Mongo update path conflict (app_id in both $set and $setOnInsert).",
+    "services/llm.py — silently returns default dict on any LLM failure; users won't see why scoring failed.",
+    "server.py — bcrypt/secret key usage N/A (OAuth-only) — good. CORS allow_origins='*' with allow_credentials=True is invalid per spec; browsers will reject credentialed requests. Set CORS_ORIGINS to the frontend origin.",
+    "No data-testid attributes verified on frontend (not tested yet)."
+  ],
+  "updated_files": ["/app/backend/tests/test_applymate_au.py"],
+  "success_rate": {"backend": "59%", "frontend": "not tested"},
+  "test_credentials": "Direct Mongo injection per /app/memory/test_credentials.md; UID/TOKEN generated per-run in test fixture; cleanup in teardown.",
+  "seed_data_creation": "Generated /tmp/test_resume.docx (Python SWE) for resume upload test.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "After main agent fixes the two backend bugs (datetime tz in services/jobs.py and Mongo app_id conflict in server.py POST /api/applications), rerun: `pytest /app/backend/tests/test_applymate_au.py -v`. All 17 should pass. Then exercise frontend e2e — inject Mongo session, set cookie, visit /dashboard, verify job cards load, click a job -> match button -> verify Claude scores appear (~5-10s), generate cover letter (~10-20s), save to Kanban tracker, drag/change status. CORS allow_origins=* with credentials is misconfigured but browser may still work via cookie; check.",
+  "rca of the issue": "1) services/jobs.py:166-170 filters by `j['posted_at'] >= cutoff_12` where cutoff_12 is tz-aware. The Muse / Remotive fromisoformat results can be naive when publication_date lacks Z/offset. The seed jobs use _now()-timedelta which IS tz-aware so filtering them works, but the exception only fires when any external job returns naive. Fix: normalise after parsing. 2) server.py:346-351 builds upsert with $set containing app_id and $setOnInsert also containing app_id → MongoDB rejects conflicting path. Remove app_id from $set."
+}
