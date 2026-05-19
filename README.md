@@ -105,6 +105,13 @@ REACT_APP_BACKEND_URL=https://your-backend.com
 WDS_SOCKET_PORT=443
 ```
 
+### Deploy to `umangcodes.me`
+- GitHub Pages deploys the React app from `.github/workflows/deploy-pages.yml`
+- Set the repository variable `REACT_APP_BACKEND_URL` to the production backend origin before running the workflow
+- The frontend publishes with a `CNAME` of `umangcodes.me`
+- The workflow copies `index.html` to `404.html` so deep links like `/dashboard` keep working on GitHub Pages
+- In the repository Pages settings, use **GitHub Actions** as the source if it is not already enabled
+
 ### Run locally
 ```bash
 # Backend (port 8001)
