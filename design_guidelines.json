@@ -1,0 +1,144 @@
+{
+  "theme": "LIGHT",
+  "archetype": "3 (Pastel & Soft) with Neo-Brutalist Power-User Polish",
+  "domain": "Productivity / Job Hunting SaaS",
+  "emotional_tone": "Warm, motivating, highly organized, ambitious.",
+  "typography": {
+    "fonts": {
+      "headings": "Cabinet Grotesk",
+      "body": "IBM Plex Sans",
+      "mono": "JetBrains Mono"
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-black",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-bold",
+      "h3": "text-xl sm:text-2xl tracking-tight font-semibold",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-sm sm:text-base leading-relaxed font-normal",
+      "small_labels": "text-xs tracking-[0.2em] uppercase font-semibold"
+    },
+    "rules": [
+      "Headings must use tight letter spacing.",
+      "Labels and overlines must be tiny, uppercase, and widely tracked.",
+      "Line height must be tight for headers (leading-none) and loose for body (leading-relaxed).",
+      "Never use Inter, Roboto, or Space Grotesk."
+    ]
+  },
+  "colors": {
+    "background": {
+      "base": "#FDFBF7",
+      "card": "#FFFFFF",
+      "sidebar": "#F6F4ED"
+    },
+    "text": {
+      "primary": "#0A0A0A",
+      "secondary": "#525252",
+      "disabled": "#A3A3A3",
+      "on_dark": "#FFFFFF"
+    },
+    "borders": {
+      "default": "#1E1E1E",
+      "subtle": "#E5E5E5"
+    },
+    "accents": {
+      "cta": "#0A0A0A",
+      "cta_hover": "#262626",
+      "cta_text": "#FFFFFF",
+      "highlight": "#F2542D",
+      "match_high": "#D4F4E4",
+      "match_high_text": "#0F5132",
+      "match_medium": "#FFEACC",
+      "match_medium_text": "#664D03",
+      "match_low": "#F8D7DA",
+      "match_low_text": "#842029",
+      "pastel_blue": "#D6E4F0",
+      "pastel_purple": "#E2D9F3"
+    },
+    "rules": [
+      "Use high contrast for text to meet APCA standards.",
+      "Avoid teal or purple for main CTA. Use Pure Black or Vibrant Terracotta.",
+      "Colors convey status (e.g., Match Scores) rather than just decoration."
+    ]
+  },
+  "layout_and_spacing": {
+    "spacing_scale": "p-2, p-4, p-6, p-8, p-12",
+    "strategy": "The Control Room Grid (Mode B) + Neo-Brutalist Grid Borders",
+    "container_padding": "Containers with borders must have generous internal padding (p-6).",
+    "grid": {
+      "base": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4",
+      "gap": "gap-4 or gap-6",
+      "span_logic": {
+        "summary": "col-span-1",
+        "primary_data": "col-span-2 row-span-2 or col-span-3",
+        "feed_list": "col-span-1 row-span-2"
+      }
+    },
+    "rules": [
+      "No soft rounded shadows. Use sharp 1px borders with solid color backgrounds.",
+      "Every pixel utilized, use h-full on children.",
+      "Ensure optical alignment over geometrical alignment."
+    ]
+  },
+  "surfaces": {
+    "cards": "Flat solid background, sharp 1px dark border (#1E1E1E), no shadow. On hover: slight lift (-translate-y-1) and hard solid shadow (4px 4px 0px #1E1E1E).",
+    "header": "Solid background (#FDFBF7) with a hard 1px bottom border.",
+    "modals": "Solid white background, 2px dark border, hard solid shadow.",
+    "badges": "Pill shaped or sharp rectangles. High contrast text over pastel background."
+  },
+  "motion": {
+    "hover_states": "Hard brutalist shift: add a hard drop-shadow and translate-x-[-2px] translate-y-[-2px] on interactive elements.",
+    "transitions": "Fast and snappy. transition: transform 0.15s ease, box-shadow 0.15s ease.",
+    "page_load": "Staggered fade and slide up for dashboard widgets."
+  },
+  "components": {
+    "buttons": "Custom HTML/Tailwind buttons for main CTAs. Sharp borders, strong typography. For standard operations, use Shadcn Button but override rounded corners to rounded-none or rounded-sm, and replace soft shadows with hard shadows.",
+    "inputs": "Shadcn Form/Input/Select. Override to have sharp corners and 1px dark borders. Focus state: ring-2 ring-black ring-offset-2.",
+    "tables": "Shadcn Table for Kanban or Job Lists. Use solid row borders.",
+    "charts": "Recharts / Shadcn Charts for resume match insights and tracking. Minimal styling, match the pastel/brutalist theme.",
+    "icons": "@phosphor-icons/react for dense dashboard UI. Use regular or bold weights to match the strong typography."
+  },
+  "media": {
+    "images": [
+      {
+        "category": "hero_background",
+        "description": "Warm, inspiring office space with soft lighting for the Google Sign-in landing page.",
+        "url": "https://static.prod-images.emergentagent.com/jobs/87c65aeb-4aed-40c6-ac4f-8462885bcb5e/images/597889054a2da23a718579f587e801cbfd30390d2ac0a8d6b04f243a23cae25e.png"
+      },
+      {
+        "category": "company_logo_placeholder_1",
+        "description": "Example tech logo (Apple)",
+        "url": "https://images.pexels.com/photos/9949426/pexels-photo-9949426.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+      },
+      {
+        "category": "company_logo_placeholder_2",
+        "description": "Example corporate logo (Canon)",
+        "url": "https://images.unsplash.com/photo-1775513143262-bccd605c5dd8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDZ8MHwxfHNlYXJjaHwzfHxjb21wYW55JTIwYnJhbmQlMjBsb2dvJTIwd2hpdGUlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc3OTE4MDQ5Mnww&ixlib=rb-4.1.0&q=85"
+      }
+    ],
+    "rules": [
+      "Never use placeholder URLs (like via.placeholder.com). Use the provided image URLs.",
+      "Ensure hero images have an appropriate overlay if text is placed on top (e.g., bg-white/40 for light theme) so text remains readable."
+    ]
+  },
+  "accessibility": {
+    "testing_attributes": "All interactive elements MUST have a data-testid attribute (e.g., data-testid='job-apply-button').",
+    "contrast": "Ensure minimum 4.5:1 ratio for normal text. Avoid light grey text on white.",
+    "focus": "All focusable elements must have visible focus rings (e.g., focus-visible:ring-2 focus-visible:ring-offset-2)."
+  },
+  "pages_and_features": {
+    "landing_page": "Google sign-in gate. Warm hero image background. A clean, brutalist centered card with sharp borders and the Sign-in button.",
+    "dashboard_main": "Bento-style layout. Top row: Key metrics (Total Applied, Interviewing, Avg Match Score). Main area: Data-dense Job Grid (Australia focus). Right column or hidden panel: 5 Uploaded Resumes summary.",
+    "job_card": "Includes Title, Company, Location, Salary, Source (SEEK, LinkedIn), Posted Time. Hero visual: A massive, color-coded Match Score (0-100%). Button: 'Apply' which dynamically indicates the best matching resume.",
+    "kanban_tracker": "Columns for Saved, Applied, Interview, Offer, Rejected. Pastel column backgrounds with sharp card items.",
+    "resume_manager": "List of up to 5 resumes with role tags. Insights modal/section for Gap Analysis vs JD.",
+    "filters_panel": "Sidebar or top bar command-palette style filters for Location, Salary, Role Type, Source, Match Threshold, Graduate Programs."
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the typography choices: Cabinet Grotesk and IBM Plex Sans. Use JetBrains Mono for data points or scores if needed.",
+    "Install the Phosphor Icons library (yarn add @phosphor-icons/react).",
+    "Do not use generic Shadcn soft shadows; replace them with hard box-shadows (e.g., 'shadow-[4px_4px_0px_#1E1E1E]') for the Neo-Brutalist feel.",
+    "Ensure the match score is the prominent visual element in the Job Cards.",
+    "Integrate a command palette / filters approach for managing data density.",
+    "Ensure layout strictly uses Tailwind grid without deeply nested unaligned containers."
+  ]
+}
