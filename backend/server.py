@@ -51,8 +51,17 @@ class Resume(BaseModel):
     skills: List[str] = []
     adjacent_skills: List[str] = []
     role_titles: List[str] = []
+    tools: List[str] = []
+    soft_skills: List[str] = []
+    education: List[str] = []
+    certifications: List[str] = []
+    languages: List[str] = []
+    achievements: List[str] = []
     years_experience: int = 0
+    seniority: str = ""
     summary: str = ""
+    ats_score: int = 0
+    ats_tips: List[str] = []
     created_at: datetime
 
 class Job(BaseModel):
@@ -222,8 +231,17 @@ async def upload_resume(
         "skills": parsed.get("skills", []),
         "adjacent_skills": parsed.get("adjacent_skills", []),
         "role_titles": parsed.get("role_titles", []),
+        "tools": parsed.get("tools", []),
+        "soft_skills": parsed.get("soft_skills", []),
+        "education": parsed.get("education", []),
+        "certifications": parsed.get("certifications", []),
+        "languages": parsed.get("languages", []),
+        "achievements": parsed.get("achievements", []),
         "years_experience": parsed.get("years_experience", 0),
+        "seniority": parsed.get("seniority", ""),
         "summary": parsed.get("summary", ""),
+        "ats_score": parsed.get("ats_score", 0),
+        "ats_tips": parsed.get("ats_tips", []),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.resumes.insert_one(doc)
@@ -248,6 +266,36 @@ async def delete_resume(resume_id: str, user: User = Depends(get_current_user)):
     if r.deleted_count == 0:
         raise HTTPException(404, "Not found")
     return {"ok": True}
+
+
+@api.post("/resumes/{resume_id}/reparse")
+async def reparse_resume(resume_id: str, user: User = Depends(get_current_user)):
+    """Re-run the LLM parser on an existing resume's stored text."""
+    r = await db.resumes.find_one({"resume_id": resume_id, "user_id": user.user_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(404, "Not found")
+    parsed = await parse_resume_ai(r.get("content_text", ""))
+    update = {
+        "skills": parsed.get("skills", []),
+        "adjacent_skills": parsed.get("adjacent_skills", []),
+        "role_titles": parsed.get("role_titles", []),
+        "tools": parsed.get("tools", []),
+        "soft_skills": parsed.get("soft_skills", []),
+        "education": parsed.get("education", []),
+        "certifications": parsed.get("certifications", []),
+        "languages": parsed.get("languages", []),
+        "achievements": parsed.get("achievements", []),
+        "years_experience": parsed.get("years_experience", 0),
+        "seniority": parsed.get("seniority", ""),
+        "summary": parsed.get("summary", ""),
+        "ats_score": parsed.get("ats_score", 0),
+        "ats_tips": parsed.get("ats_tips", []),
+    }
+    await db.resumes.update_one({"resume_id": resume_id, "user_id": user.user_id}, {"$set": update})
+    updated = await db.resumes.find_one({"resume_id": resume_id}, {"_id": 0, "file_b64": 0})
+    if isinstance(updated.get("created_at"), str):
+        updated["created_at"] = datetime.fromisoformat(updated["created_at"])
+    return Resume(**updated)
 
 
 # -------------------- Job Routes --------------------

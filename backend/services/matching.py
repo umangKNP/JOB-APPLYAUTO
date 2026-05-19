@@ -41,9 +41,10 @@ def keyword_score(job: dict, resume: dict) -> dict:
 
     skills = [_normalise(s) for s in (resume.get("skills") or []) if s]
     adjacent = [_normalise(s) for s in (resume.get("adjacent_skills") or []) if s]
+    tools = [_normalise(s) for s in (resume.get("tools") or []) if s]
     role_titles = [_normalise(s) for s in (resume.get("role_titles") or []) if s]
 
-    all_kw: list = list(dict.fromkeys(skills + adjacent))  # de-dupe preserve order
+    all_kw: list = list(dict.fromkeys(skills + tools + adjacent))  # de-dupe preserve order
     if not all_kw and not role_titles:
         return {"score": 0, "matched_skills": [], "missing_skills": [], "title_hits": []}
 
