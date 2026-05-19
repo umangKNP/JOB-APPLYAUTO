@@ -4,7 +4,7 @@ import { http } from "../lib/api";
 import TopNav from "../components/TopNav";
 import MatchBadge from "../components/MatchBadge";
 import { toast } from "sonner";
-import { ExternalLink, Sparkles, ArrowLeft, BookmarkPlus, Copy, CheckCircle2 } from "lucide-react";
+import { ExternalLink, Sparkles, ArrowLeft, BookmarkPlus, Copy, CheckCircle2, AlertTriangle } from "lucide-react";
 
 const STATUSES = ["saved", "applied", "interview", "offer", "rejected"];
 
@@ -18,8 +18,10 @@ export default function JobDetail() {
   const [loadingMatch, setLoadingMatch] = useState(false);
   const [loadingCL, setLoadingCL] = useState(false);
   const [app, setApp] = useState(state?.job?.application || null);
+  const [resumeCount, setResumeCount] = useState(null);
 
   useEffect(() => {
+    http.get("/resumes").then(r => setResumeCount(r.data.length)).catch(() => setResumeCount(0));
     // hydrate if not navigated with state
     if (!job) {
       http.get("/jobs").then(r => {
@@ -95,14 +97,24 @@ export default function JobDetail() {
             <MatchBadge score={best?.score} size="lg" />
           </div>
 
+          {resumeCount === 0 && (
+            <div className="mt-5 border-[1.5px] border-[#1E1E1E] bg-[#FFEACC] p-3 flex items-start gap-2 text-sm" data-testid="no-resume-banner">
+              <AlertTriangle size={16} className="mt-0.5 flex-shrink-0"/>
+              <div>
+                <strong>No resume uploaded yet.</strong> AI scoring and cover letter generation need at least one resume.{" "}
+                <Link to="/resumes" className="underline font-semibold">Upload one now →</Link>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2 mt-6">
             <a href={job.url} target="_blank" rel="noopener noreferrer" className="nb-btn inline-flex items-center gap-2" data-testid="btn-apply-now">
               Apply on {job.source} <ExternalLink size={14}/>
             </a>
-            <button onClick={runMatch} disabled={loadingMatch} className="nb-btn-outline inline-flex items-center gap-2" data-testid="btn-rescore">
+            <button onClick={runMatch} disabled={loadingMatch || resumeCount === 0} className="nb-btn-outline inline-flex items-center gap-2" data-testid="btn-rescore">
               <Sparkles size={14}/> {loadingMatch ? "Scoring…" : (matches.length ? "Re-score" : "AI Score vs resumes")}
             </button>
-            <button onClick={genCL} disabled={loadingCL} className="nb-btn-outline inline-flex items-center gap-2" data-testid="btn-cover-letter">
+            <button onClick={genCL} disabled={loadingCL || resumeCount === 0} className="nb-btn-outline inline-flex items-center gap-2" data-testid="btn-cover-letter">
               {loadingCL ? "Drafting…" : "Generate cover letter"}
             </button>
             <button onClick={() => saveStatus("saved")} className="nb-btn-outline inline-flex items-center gap-2" data-testid="btn-save">

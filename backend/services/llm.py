@@ -1,6 +1,8 @@
 """Claude Sonnet 4.5 wrappers for resume parsing, match scoring, cover letter."""
-import os, json, uuid, re
+import os, json, uuid, re, logging
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+logger = logging.getLogger(__name__)
 
 KEY = os.environ.get("EMERGENT_LLM_KEY", "")
 MODEL = ("anthropic", "claude-sonnet-4-5-20250929")
@@ -39,6 +41,7 @@ async def parse_resume_ai(text: str) -> dict:
             "summary": data.get("summary", "")[:500],
         }
     except Exception as e:
+        logger.error("parse_resume_ai failed: %s", e, exc_info=True)
         return {"skills": [], "summary": "Resume uploaded successfully."}
 
 
@@ -63,7 +66,8 @@ async def score_match(title: str, jd: str, resume_text: str, resume_skills: list
             "matched_skills": [str(s) for s in d.get("matched_skills", [])][:10],
             "missing_skills": [str(s) for s in d.get("missing_skills", [])][:10],
         }
-    except Exception:
+    except Exception as e:
+        logger.error("score_match failed: %s", e, exc_info=True)
         return {"score": 50, "reasoning": "AI scoring temporarily unavailable.", "matched_skills": [], "missing_skills": []}
 
 
@@ -87,5 +91,6 @@ async def generate_cover_letter(name: str, job: dict, resume: dict) -> str:
     try:
         resp = await chat.send_message(UserMessage(text=prompt))
         return str(resp).strip()
-    except Exception:
+    except Exception as e:
+        logger.error("generate_cover_letter failed: %s", e, exc_info=True)
         return "Unable to generate cover letter right now. Please try again in a moment."

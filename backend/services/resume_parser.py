@@ -1,7 +1,10 @@
 """Extract text from PDF/DOCX/TXT resumes."""
 import io
+import logging
 from pypdf import PdfReader
 from docx import Document
+
+logger = logging.getLogger(__name__)
 
 
 def extract_text(filename: str, content: bytes) -> str:
@@ -16,5 +19,6 @@ def extract_text(filename: str, content: bytes) -> str:
         if name.endswith(".txt"):
             return content.decode("utf-8", errors="ignore").strip()
     except Exception as e:
+        logger.error("extract_text failed for %s: %s", filename, e)
         return ""
     return ""
