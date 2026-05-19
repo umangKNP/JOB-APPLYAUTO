@@ -53,7 +53,8 @@ export default function Dashboard() {
     } finally { setFetching(false); }
   };
 
-  useEffect(() => { loadJobs(); /* eslint-disable-next-line */ }, [source, graduateOnly, minScore]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadJobs(); }, [source, graduateOnly, minScore]);
 
   return (
     <div className="min-h-screen">
