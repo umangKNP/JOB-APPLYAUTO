@@ -16,6 +16,7 @@ import httpx
 from services.resume_parser import extract_text
 from services.llm import parse_resume_ai, score_match, generate_cover_letter
 from services.jobs import fetch_all_jobs
+from services.email import send_digest_email
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -419,6 +420,31 @@ async def stats(user: User = Depends(get_current_user)):
         "applications": len(apps),
         "by_status": by_status,
     }
+
+
+# -------------------- Email digest --------------------
+@api.post("/digest/send")
+async def send_digest_now(user: User = Depends(get_current_user)):
+    """Send the user a Resend email of their top 5 highest-scoring jobs right now."""
+    matches = await db.matches.find({"user_id": user.user_id}, {"_id": 0}).sort("score", -1).to_list(50)
+    if not matches:
+        raise HTTPException(400, "No AI matches yet. Open a few jobs and run 'AI Score' first, or use 'AI Match all' on the dashboard.")
+    seen_jobs = set()
+    top: list = []
+    for m in matches:
+        if m["job_id"] in seen_jobs:
+            continue
+        seen_jobs.add(m["job_id"])
+        job = await db.jobs.find_one({"job_id": m["job_id"]}, {"_id": 0})
+        if not job:
+            continue
+        top.append({"job": job, "match": m})
+        if len(top) >= 5:
+            break
+    if not top:
+        raise HTTPException(400, "Could not assemble digest jobs")
+    result = await send_digest_email(user.email, user.name, top)
+    return result
 
 
 @api.get("/")

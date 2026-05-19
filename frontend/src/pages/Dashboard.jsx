@@ -3,7 +3,7 @@ import { http } from "../lib/api";
 import TopNav from "../components/TopNav";
 import JobCard from "../components/JobCard";
 import { toast } from "sonner";
-import { RefreshCw, Filter, Sparkles } from "lucide-react";
+import { RefreshCw, Filter, Sparkles, Mail } from "lucide-react";
 
 const SOURCES = ["all", "SEEK", "LinkedIn", "Indeed", "Jora", "Hays", "CareerOne",
   "Workforce Australia", "Adzuna AU", "My Future", "Toozly", "Remotive", "The Muse"];
@@ -95,6 +95,17 @@ export default function Dashboard() {
             </button>
             <button onClick={matchAllVisible} disabled={matching} className="nb-btn inline-flex items-center gap-2 text-sm" data-testid="btn-match-all">
               <Sparkles size={14}/> {matching ? "Scoring…" : "AI Match all"}
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const r = await http.post("/digest/send");
+                  if (r.data.status === "sent") toast.success("Digest emailed!");
+                  else toast.info(r.data.reason || r.data.status);
+                } catch (e) { toast.error(e.response?.data?.detail || "Failed to send digest"); }
+              }}
+              className="nb-btn-outline inline-flex items-center gap-2 text-sm" data-testid="btn-send-digest">
+              <Mail size={14}/> Email me top matches
             </button>
           </div>
         </div>
