@@ -23,8 +23,9 @@ def _normalise(kw: str) -> str:
 
 
 def _phrase_present(phrase: str, blob: str) -> bool:
-    """Match multi-word phrases with word boundaries; fall back to substring."""
-    if not phrase or not blob:
+    """Match multi-word phrases with word boundaries; fall back to substring.
+    Skip short (<3 char) phrases to avoid false positives like 'C' matching every word."""
+    if not phrase or not blob or len(phrase) < 3:
         return False
     pattern = r"\b" + re.escape(phrase) + r"\b"
     return re.search(pattern, blob) is not None

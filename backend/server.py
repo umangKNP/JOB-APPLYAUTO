@@ -323,8 +323,6 @@ async def list_jobs(
         r["application"] = apps_by_job.get(r["job_id"])
         out.append(r)
     # sort by score DESC, then posted_at DESC
-    out.sort(key=lambda j: (-(j.get("best_match") or {}).get("score", 0), j.get("posted_at", "")), reverse=False)
-    # but the secondary sort should be by posted_at DESC; easier with two keys
     out.sort(key=lambda j: ((j.get("best_match") or {}).get("score", 0), j.get("posted_at", "")), reverse=True)
     return out[:limit]
 
