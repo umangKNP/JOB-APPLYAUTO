@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -36,12 +36,18 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         env:
+          CI: "false"
+          PUBLIC_URL: ${{ vars.PUBLIC_URL }}
           REACT_APP_BACKEND_URL: ${{ vars.REACT_APP_BACKEND_URL }}
         run: |
           if [ -z "$REACT_APP_BACKEND_URL" ]; then
-            echo "Missing repository variable REACT_APP_BACKEND_URL" >&2
+            echo "Missing repository variable REACT_APP_BACKEND_URL. Set it in Settings → Secrets and variables → Actions → Variables." >&2
             exit 1
           fi
+          if [ -z "$PUBLIC_URL" ]; then
+            PUBLIC_URL="/${GITHUB_REPOSITORY#*/}"
+          fi
+          export PUBLIC_URL
           yarn build
           cp build/index.html build/404.html
 
