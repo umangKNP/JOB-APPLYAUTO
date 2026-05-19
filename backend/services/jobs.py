@@ -1,17 +1,22 @@
 """Fetch jobs from public Australian + free sources.
-Sources used (no API key required):
+Sources:
+- Adzuna AU (live API) — requires ADZUNA_APP_ID + ADZUNA_APP_KEY
 - Remotive (public API)
 - The Muse (public API)
 - Workforce Australia / Jora / SEEK / LinkedIn - referenced via crafted search URLs
-  (these sites block scraping; we surface a curated seed of representative
-  Australian listings the user can click-through to apply)
 """
+import os
 import asyncio
+import logging
 import httpx
 from datetime import datetime, timezone, timedelta
 from typing import List
 from bs4 import BeautifulSoup
-import re
+
+logger = logging.getLogger(__name__)
+
+ADZUNA_APP_ID = os.environ.get("ADZUNA_APP_ID", "")
+ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY", "")
 
 
 def _now():
@@ -28,6 +33,55 @@ def _ensure_aware(dt):
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+async def _adzuna_au() -> List[dict]:
+    """Adzuna AU — last 1 day, multiple pages for variety."""
+    if not (ADZUNA_APP_ID and ADZUNA_APP_KEY):
+        return []
+    out: List[dict] = []
+    async with httpx.AsyncClient(timeout=20) as hc:
+        for page in (1, 2):
+            try:
+                url = (
+                    f"https://api.adzuna.com/v1/api/jobs/au/search/{page}"
+                    f"?app_id={ADZUNA_APP_ID}&app_key={ADZUNA_APP_KEY}"
+                    f"&results_per_page=30&max_days_old=1&sort_by=date"
+                )
+                r = await hc.get(url)
+                if r.status_code != 200:
+                    logger.warning("Adzuna page %s status %s", page, r.status_code)
+                    break
+                data = r.json().get("results", [])
+            except Exception as e:
+                logger.error("Adzuna fetch failed: %s", e)
+                break
+            for j in data:
+                try:
+                    posted = _ensure_aware(datetime.fromisoformat(j["created"].replace("Z", "+00:00")))
+                except Exception:
+                    posted = _now()
+                sal_min = j.get("salary_min")
+                sal_max = j.get("salary_max")
+                salary = None
+                if sal_min and sal_max:
+                    salary = f"${int(sal_min):,} – ${int(sal_max):,} AUD"
+                elif sal_min:
+                    salary = f"From ${int(sal_min):,} AUD"
+                title = (j.get("title") or "").strip()
+                out.append({
+                    "source": "Adzuna AU",
+                    "title": title,
+                    "company": (j.get("company") or {}).get("display_name", ""),
+                    "location": (j.get("location") or {}).get("display_name", "Australia"),
+                    "salary": salary,
+                    "description": _strip_html(j.get("description", ""))[:6000],
+                    "url": j.get("redirect_url", ""),
+                    "posted_at": posted,
+                    "job_type": (j.get("contract_time") or "full-time"),
+                    "is_graduate": any(k in title.lower() for k in ("graduate", "intern", "junior", "entry")),
+                })
+    return out
 
 
 async def _remotive() -> List[dict]:
@@ -165,14 +219,13 @@ def _seed_au_jobs() -> List[dict]:
 
 
 async def fetch_all_jobs() -> List[dict]:
-    rem, mus = await asyncio.gather(_remotive(), _themuse())
+    adz, rem, mus = await asyncio.gather(_adzuna_au(), _remotive(), _themuse())
     seed = _seed_au_jobs()
-    # only keep jobs posted in last 12h for the "recent" promise; else last 7 days as fallback
     cutoff_12 = _now() - timedelta(hours=12)
     cutoff_7d = _now() - timedelta(days=7)
-    combined = rem + mus + seed
+    combined = adz + rem + mus + seed
     recent = [j for j in combined if j["posted_at"] >= cutoff_12]
     if len(recent) < 20:
         recent = [j for j in combined if j["posted_at"] >= cutoff_7d]
     recent.sort(key=lambda x: x["posted_at"], reverse=True)
-    return recent[:120]
+    return recent[:150]

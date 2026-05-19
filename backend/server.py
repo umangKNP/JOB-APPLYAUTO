@@ -1,9 +1,12 @@
 """ApplyMate AU - Job aggregator + AI matching backend"""
-from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form, Request, Response, Cookie, Depends
 from dotenv import load_dotenv
+from pathlib import Path
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env', override=True)
+
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form, Request, Response, Cookie, Depends
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
@@ -228,10 +231,12 @@ async def delete_resume(resume_id: str, user: User = Depends(get_current_user)):
 async def trigger_fetch(user: User = Depends(get_current_user)):
     """Fetch jobs from public sources, save to DB."""
     jobs = await fetch_all_jobs()
+    by_source: dict = {}
+    for j in jobs:
+        by_source[j["source"]] = by_source.get(j["source"], 0) + 1
     saved = 0
     for j in jobs:
-        # upsert by source + url
-        existing = await db.jobs.find_one({"source": j["source"], "url": j["url"]}, {"_id": 0})
+        existing = await db.jobs.find_one({"source": j["source"], "url": j["url"], "title": j["title"]}, {"_id": 0})
         if existing:
             continue
         j["job_id"] = f"job_{uuid.uuid4().hex[:10]}"
@@ -240,7 +245,7 @@ async def trigger_fetch(user: User = Depends(get_current_user)):
             j["posted_at"] = j["posted_at"].isoformat()
         await db.jobs.insert_one(j)
         saved += 1
-    return {"fetched": len(jobs), "saved": saved}
+    return {"fetched": len(jobs), "saved": saved, "by_source": by_source}
 
 
 @api.get("/jobs")
