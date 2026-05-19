@@ -37,8 +37,9 @@ function AppRouter() {
 }
 
 export default function App() {
+  const basename = process.env.PUBLIC_URL || "/";
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <AuthProvider>
         <AppRouter />
         <Toaster position="top-right" />

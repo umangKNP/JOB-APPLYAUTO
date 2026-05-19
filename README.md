@@ -91,7 +91,7 @@
 ```
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=test_database
-CORS_ORIGINS=https://your-frontend.com,http://localhost:3000
+CORS_ORIGINS=https://your-frontend.com,https://umangKNP.github.io,http://localhost:3000
 EMERGENT_LLM_KEY=sk-emergent-xxx
 ADZUNA_APP_ID=xxxxxxxx              # https://developer.adzuna.com (free)
 ADZUNA_APP_KEY=xxxxxxxxxxxxxxxxxxxxx
@@ -119,6 +119,13 @@ yarn start
 ```
 
 On Emergent platform: services are supervised automatically. Use `sudo supervisorctl restart backend|frontend` only after editing `.env` or installing dependencies.
+
+### Deploy frontend to GitHub Pages
+1. Go to **Settings → Pages** and set **Source = GitHub Actions**.
+2. Set repository variable **`REACT_APP_BACKEND_URL`** to your deployed backend URL (for example `https://your-backend.onrender.com`).
+3. Ensure backend `CORS_ORIGINS` includes your Pages origin (`https://umangKNP.github.io`).
+4. Push to `main` to trigger `.github/workflows/deploy-pages.yml`.
+5. The app will be published at `https://umangKNP.github.io/JOB-APPLYAUTO`.
 
 ---
 
