@@ -3,21 +3,21 @@ import { http } from "../lib/api";
 import TopNav from "../components/TopNav";
 import JobCard from "../components/JobCard";
 import { toast } from "sonner";
-import { RefreshCw, Filter, Sparkles, Mail } from "lucide-react";
+import { RefreshCw, Filter, Mail, ScanSearch } from "lucide-react";
 
-const SOURCES = ["all", "SEEK", "LinkedIn", "Indeed", "Jora", "Hays", "CareerOne",
-  "Workforce Australia", "Adzuna AU", "My Future", "Toozly", "Remotive", "The Muse"];
+const SOURCES = ["all", "Adzuna AU", "SEEK", "LinkedIn", "Indeed", "Jora", "Hays", "CareerOne",
+  "Workforce Australia", "My Future", "Toozly", "Remotive", "The Muse"];
 
 export default function Dashboard() {
   const [jobs, setJobs] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
-  const [matching, setMatching] = useState(false);
   const [source, setSource] = useState("all");
   const [graduateOnly, setGraduateOnly] = useState(false);
-  const [minScore, setMinScore] = useState(0);
+  const [minScore, setMinScore] = useState(20);
   const [location, setLocation] = useState("");
+  const [resumeCount, setResumeCount] = useState(null);
 
   const loadJobs = async () => {
     setLoading(true);
@@ -30,9 +30,10 @@ export default function Dashboard() {
       ]);
       setJobs(r.data);
       setStats(s.data);
+      setResumeCount(s.data.resumes);
       // auto-trigger fetch if empty
-      if (r.data.length === 0 && !graduateOnly && source === "all") {
-        await refreshJobs();
+      if (r.data.length === 0 && !graduateOnly && source === "all" && minScore <= 20) {
+        await refreshJobs(false);
       }
     } catch (e) {
       toast.error("Failed to load jobs");
@@ -41,33 +42,15 @@ export default function Dashboard() {
     }
   };
 
-  const refreshJobs = async () => {
+  const refreshJobs = async (notify = true) => {
     setFetching(true);
     try {
       const r = await http.post("/jobs/fetch");
-      toast.success(`Pulled ${r.data.fetched} jobs · ${r.data.saved} new`);
+      if (notify) toast.success(`Pulled ${r.data.fetched} jobs · ${r.data.saved} new`);
       await loadJobs();
     } catch (e) {
-      toast.error("Failed to fetch jobs");
+      if (notify) toast.error("Failed to fetch jobs");
     } finally { setFetching(false); }
-  };
-
-  const matchAllVisible = async () => {
-    setMatching(true);
-    const toScore = jobs.filter(j => !j.best_match).slice(0, 15);
-    if (toScore.length === 0) {
-      toast.info("All visible jobs already scored");
-      setMatching(false);
-      return;
-    }
-    toast.info(`AI scoring ${toScore.length} jobs…`);
-    try {
-      for (const j of toScore) {
-        try { await http.post(`/jobs/${j.job_id}/match`); } catch {}
-      }
-      toast.success("Done");
-      await loadJobs();
-    } finally { setMatching(false); }
   };
 
   useEffect(() => { loadJobs(); /* eslint-disable-next-line */ }, [source, graduateOnly, minScore]);
@@ -84,17 +67,24 @@ export default function Dashboard() {
           <Stat label="Applications" value={stats?.applications ?? 0} accent="match-medium" />
         </div>
 
+        {resumeCount === 0 && (
+          <div className="nb-card p-5 mb-6 bg-[#FFEACC] flex items-start gap-3" data-testid="upload-prompt">
+            <ScanSearch size={22} className="mt-0.5"/>
+            <div>
+              <div className="font-display font-bold text-lg tracking-tight">Upload a resume to unlock matching</div>
+              <p className="text-sm text-[#664D03] mt-1">ApplyMate filters thousands of AU jobs down to the ones that match <em>your</em> skills. <a href="/resumes" className="underline font-semibold">Upload your first resume →</a></p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
           <div>
-            <div className="label-overline">Last 12 hours</div>
+            <div className="label-overline">Last 12 hours · matched to your resumes</div>
             <h1 className="font-display font-black text-3xl lg:text-4xl tracking-tighter">Job Feed</h1>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <button onClick={refreshJobs} disabled={fetching} className="nb-btn-outline inline-flex items-center gap-2 text-sm" data-testid="btn-refresh-jobs">
+            <button onClick={() => refreshJobs(true)} disabled={fetching} className="nb-btn-outline inline-flex items-center gap-2 text-sm" data-testid="btn-refresh-jobs">
               <RefreshCw size={14} className={fetching ? "animate-spin" : ""}/> {fetching ? "Fetching" : "Refresh sources"}
-            </button>
-            <button onClick={matchAllVisible} disabled={matching} className="nb-btn inline-flex items-center gap-2 text-sm" data-testid="btn-match-all">
-              <Sparkles size={14}/> {matching ? "Scoring…" : "AI Match all"}
             </button>
             <button
               onClick={async () => {
@@ -104,7 +94,7 @@ export default function Dashboard() {
                   else toast.info(r.data.reason || r.data.status);
                 } catch (e) { toast.error(e.response?.data?.detail || "Failed to send digest"); }
               }}
-              className="nb-btn-outline inline-flex items-center gap-2 text-sm" data-testid="btn-send-digest">
+              className="nb-btn inline-flex items-center gap-2 text-sm" data-testid="btn-send-digest">
               <Mail size={14}/> Email me top matches
             </button>
           </div>
@@ -124,7 +114,7 @@ export default function Dashboard() {
             Graduate only
           </label>
           <div className="flex items-center gap-2 text-sm">
-            <span>Min score:</span>
+            <span>Min match:</span>
             <input type="range" min={0} max={100} step={5} value={minScore} onChange={e=>setMinScore(parseInt(e.target.value))} data-testid="filter-minscore"/>
             <span className="font-mono w-8">{minScore}</span>
           </div>
@@ -134,9 +124,17 @@ export default function Dashboard() {
           <div className="font-display text-2xl">Loading jobs…</div>
         ) : jobs.length === 0 ? (
           <div className="nb-card p-10 text-center">
-            <div className="font-display font-bold text-2xl mb-2">No jobs yet</div>
-            <p className="text-[#525252] mb-4">Click <strong>Refresh sources</strong> to pull the latest listings.</p>
-            <button onClick={refreshJobs} className="nb-btn" data-testid="btn-empty-refresh">Pull jobs now</button>
+            <div className="font-display font-bold text-2xl mb-2">
+              {resumeCount === 0 ? "Upload a resume to see matched jobs" : "No jobs match your resume above this threshold"}
+            </div>
+            <p className="text-[#525252] mb-4">
+              {resumeCount === 0 ? "Once we have your skills, we'll filter thousands of AU jobs to the ones that fit you." : "Try lowering the Min match slider, or pull fresh listings."}
+            </p>
+            {resumeCount === 0 ? (
+              <a href="/resumes" className="nb-btn inline-block">Upload resume</a>
+            ) : (
+              <button onClick={() => refreshJobs(true)} className="nb-btn" data-testid="btn-empty-refresh">Pull jobs now</button>
+            )}
           </div>
         ) : (
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">

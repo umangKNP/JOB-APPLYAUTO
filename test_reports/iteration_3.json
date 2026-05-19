@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 4 (keyword-based fast matching) regression: 26/26 backend pytest tests PASS in ~33s against the live preview URL. Re-ran the full iteration-2 suite (17 tests, all green) and added 9 new tests covering (a) enriched resume parse fields (skills, adjacent_skills, role_titles, years_experience, summary), (b) GET /api/jobs?min_score=20 returns only score>=20 jobs sorted DESC and in <5s, (c) GET /api/jobs?min_score=0 returns everything with best_match populated and per-resume matches[], (d) min_score actually trims the result set, (e) AI deep-score via POST /api/jobs/{id}/match flips best_match.source from 'keyword' to 'ai' on the next /jobs read, (f) user with 0 resumes gets ALL jobs unfiltered (has_resumes=False short-circuits), and (g) pure-Python unit tests for services/matching.keyword_score + best_match (positive match, zero match, multi-resume winner pick). Measured GET /api/jobs?min_score=20 latency ~1.0-1.5s for the live pool (111+ jobs) — matches the dev's ~1.2s smoke test claim.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/jobs", "issue": "Two-pass sort in server.py (lines 326-328) — first sort is unused/no-op because the second sort overrides it. Harmless but dead code; the second `out.sort(key=lambda j: ((score, posted_at)), reverse=True)` does the job. Remove the first sort to avoid confusion."},
+      {"endpoint": "POST /api/digest/send", "issue": "Error string still references the removed 'AI Match all' button on the dashboard (Iteration 4 explicitly removed it per Dashboard.jsx changes). Update message to: 'Open a few jobs and run Deep AI re-score first.'"},
+      {"endpoint": "services/matching.py keyword_score", "issue": "Single-letter / 1-2 char skills could match noise via _phrase_present substring fallback (e.g. 'C' as a skill matches every word containing c). Consider min-length guard or token-only matching for short keywords."},
+      {"endpoint": "CORS", "issue": "(Carried over) allow_origins='*' + allow_credentials=True is spec-invalid; works only because preview is same-origin."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_applymate_au.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional polish) Remove the redundant first sort in /app/backend/server.py list_jobs (lines 326-327).",
+    "(Optional polish) Update /api/digest/send error string — 'AI Match all' button no longer exists.",
+    "(Optional hardening) Add min-length guard for short keyword phrases in services/matching._phrase_present to avoid substring false positives on 1-2 char skills."
+  ],
+  "critical_code_review_comments": [
+    "services/matching.py is clean, pure-Python, deterministic and fast — verified ~1.2s for 111-job pool. Scoring formula (base + title_bonus + role_bonus, capped at 100) behaves sanely on unit fixtures.",
+    "services/llm.py parse_resume_ai now logs exceptions (good — fix from iter-2 minor) and returns all 5 enriched fields with proper coercion + slicing caps.",
+    "server.py list_jobs correctly short-circuits filtering when has_resumes=False (verified via test_no_resumes_returns_all_jobs_unfiltered). AI matches override keyword score on a per-job basis (verified end-to-end).",
+    "Resume model now exposes adjacent_skills/role_titles/years_experience/summary — backward-compat-safe (defaults provided).",
+    "All endpoints from iteration 2 still green; no regressions introduced by the matching rework."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_applymate_au.py (added 9 tests for keyword-matching engine; added sys.path shim for service unit imports)"
+  ],
+  "success_rate": {"backend": "100% (26/26)", "frontend": "not tested (skip per request)"},
+  "test_credentials": "Per /app/memory/test_credentials.md — Mongo-injected session created in seed_user fixture; cleaned up after suite.",
+  "seed_data_creation": "Uses pre-existing /tmp/test_resume.docx (Python/FastAPI/React/MongoDB/AWS, 5y SWE). seed_user fixture inserts test user + session + preferences and cleans up after.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run `cd /app && REACT_APP_BACKEND_URL=https://jobhunt-agent.preview.emergentagent.com python -m pytest backend/tests/test_applymate_au.py -v` — expect 26/26 in ~33s. Note: tests are intentionally ordered (sequential dependency on RESUME_ID created in test_upload_resume), so DO NOT use pytest-xdist or -k single-test runs for the iteration-4 keyword tests — they assume a resume has been uploaded in this session. The new test_no_resumes_returns_all_jobs_unfiltered spins up its own isolated user. Frontend skipped per review_request testing_type='backend only'.",
+  "rca of the issue": "No regression detected. The single mid-run failure during development was a test-ordering artifact (test_match in iter-2 had already AI-scored the first tech job, so test_ai_deep_score_then_source_becomes_ai needed to pick a job that was still keyword-only). Fixed by filtering candidates where best_match.source=='keyword' and ai_matches is empty."
+}

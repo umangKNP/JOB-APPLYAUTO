@@ -17,6 +17,7 @@ from services.resume_parser import extract_text
 from services.llm import parse_resume_ai, score_match, generate_cover_letter
 from services.jobs import fetch_all_jobs
 from services.email import send_digest_email
+from services.matching import best_match, keyword_score
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -48,6 +49,9 @@ class Resume(BaseModel):
     filename: str
     content_text: str
     skills: List[str] = []
+    adjacent_skills: List[str] = []
+    role_titles: List[str] = []
+    years_experience: int = 0
     summary: str = ""
     created_at: datetime
 
@@ -200,6 +204,9 @@ async def upload_resume(
         "filename": file.filename, "content_text": text[:50000],
         "file_b64": base64.b64encode(content).decode(),
         "skills": parsed.get("skills", []),
+        "adjacent_skills": parsed.get("adjacent_skills", []),
+        "role_titles": parsed.get("role_titles", []),
+        "years_experience": parsed.get("years_experience", 0),
         "summary": parsed.get("summary", ""),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -254,8 +261,8 @@ async def list_jobs(
     source: Optional[str] = None,
     location: Optional[str] = None,
     graduate_only: bool = False,
-    min_score: int = 0,
-    limit: int = 100,
+    min_score: int = 20,
+    limit: int = 200,
     user: User = Depends(get_current_user),
 ):
     q: dict = {}
@@ -265,26 +272,61 @@ async def list_jobs(
         q["location"] = {"$regex": location, "$options": "i"}
     if graduate_only:
         q["is_graduate"] = True
-    rows = await db.jobs.find(q, {"_id": 0}).sort("posted_at", -1).limit(limit).to_list(limit)
-    # attach existing match data for user
+    # fetch a wide pool to score (don't limit by date here — let scoring decide relevance)
+    pool_limit = max(limit * 5, 300)
+    rows = await db.jobs.find(q, {"_id": 0}).sort("posted_at", -1).limit(pool_limit).to_list(pool_limit)
+    # user resumes (no file_b64) for matching
+    resumes = await db.resumes.find({"user_id": user.user_id}, {"_id": 0, "file_b64": 0}).to_list(10)
+    has_resumes = len(resumes) > 0
+
+    # AI-cached deep scores
     job_ids = [r["job_id"] for r in rows]
-    matches = await db.matches.find({"user_id": user.user_id, "job_id": {"$in": job_ids}}, {"_id": 0}).to_list(1000)
-    by_job: dict = {}
-    for m in matches:
-        by_job.setdefault(m["job_id"], []).append(m)
+    ai_matches = await db.matches.find({"user_id": user.user_id, "job_id": {"$in": job_ids}}, {"_id": 0}).to_list(2000)
+    ai_by_job: dict = {}
+    for m in ai_matches:
+        ai_by_job.setdefault(m["job_id"], []).append(m)
     apps = await db.applications.find({"user_id": user.user_id, "job_id": {"$in": job_ids}}, {"_id": 0}).to_list(1000)
     apps_by_job = {a["job_id"]: a for a in apps}
-    out = []
+
+    out: list = []
     for r in rows:
-        ms = by_job.get(r["job_id"], [])
-        best = max(ms, key=lambda x: x["score"]) if ms else None
-        if best and best["score"] < min_score:
+        # instant keyword score against best resume
+        ks_best = best_match(r, resumes) if has_resumes else None
+        # also list per-resume keyword scores for the detail page
+        per_resume = []
+        if has_resumes:
+            for res in resumes:
+                ks = keyword_score(r, res)
+                per_resume.append({
+                    "resume_id": res["resume_id"],
+                    "resume_name": res["name"],
+                    **ks,
+                })
+        ai_list = ai_by_job.get(r["job_id"], [])
+        # use AI score if available, else keyword
+        if ai_list:
+            ai_best = max(ai_list, key=lambda x: x["score"])
+            display_best = {"resume_id": ai_best["resume_id"], "resume_name": ai_best["resume_name"],
+                            "score": ai_best["score"], "source": "ai",
+                            "matched_skills": ai_best.get("matched_skills", []),
+                            "missing_skills": ai_best.get("missing_skills", [])}
+        elif ks_best:
+            display_best = {**ks_best, "source": "keyword"}
+        else:
+            display_best = None
+        score_for_filter = display_best["score"] if display_best else 0
+        if has_resumes and score_for_filter < min_score:
             continue
-        r["matches"] = ms
-        r["best_match"] = best
+        r["matches"] = per_resume
+        r["ai_matches"] = ai_list
+        r["best_match"] = display_best
         r["application"] = apps_by_job.get(r["job_id"])
         out.append(r)
-    return out
+    # sort by score DESC, then posted_at DESC
+    out.sort(key=lambda j: (-(j.get("best_match") or {}).get("score", 0), j.get("posted_at", "")), reverse=False)
+    # but the secondary sort should be by posted_at DESC; easier with two keys
+    out.sort(key=lambda j: ((j.get("best_match") or {}).get("score", 0), j.get("posted_at", "")), reverse=True)
+    return out[:limit]
 
 
 @api.post("/jobs/{job_id}/match")

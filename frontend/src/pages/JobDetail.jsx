@@ -40,7 +40,13 @@ export default function JobDetail() {
     try {
       const r = await http.post(`/jobs/${id}/match`);
       setMatches(r.data);
-      toast.success("Scored against all resumes");
+      // refresh job to get ai_matches attached
+      try {
+        const lr = await http.get("/jobs", { params: { min_score: 0, limit: 500 } });
+        const updated = lr.data.find(j => j.job_id === id);
+        if (updated) setJob(updated);
+      } catch {}
+      toast.success(`AI scored against ${r.data.length} resume(s)`);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Need a resume first");
     } finally { setLoadingMatch(false); }
@@ -72,8 +78,11 @@ export default function JobDetail() {
     <div className="min-h-screen"><TopNav /><div className="p-10">Loading…</div></div>
   );
 
-  const best = matches.length ? matches.reduce((a, b) => a.score > b.score ? a : b) : null;
-  const sorted = [...matches].sort((a, b) => b.score - a.score);
+  // matches = keyword scores from list_jobs; ai_matches = LLM deep scores
+  const aiList = job.ai_matches || matches.filter(m => m.reasoning);
+  const kwList = (job.matches && job.matches.length) ? job.matches : matches.filter(m => !m.reasoning);
+  const allSorted = [...(aiList.length ? aiList : kwList)].sort((a, b) => b.score - a.score);
+  const best = allSorted.length ? allSorted[0] : (job.best_match || null);
 
   return (
     <div className="min-h-screen">
@@ -94,7 +103,10 @@ export default function JobDetail() {
                 {job.salary && <> · <span className="font-mono text-sm">{job.salary}</span></>}
               </div>
             </div>
-            <MatchBadge score={best?.score} size="lg" />
+            <div className="text-right">
+              <MatchBadge score={best?.score} size="lg" />
+              {best?.resume_name && <div className="text-xs text-[#525252] mt-1">vs {best.resume_name} {aiList.length > 0 ? "(AI)" : "(keyword)"}</div>}
+            </div>
           </div>
 
           {resumeCount === 0 && (
@@ -112,7 +124,7 @@ export default function JobDetail() {
               Apply on {job.source} <ExternalLink size={14}/>
             </a>
             <button onClick={runMatch} disabled={loadingMatch || resumeCount === 0} className="nb-btn-outline inline-flex items-center gap-2" data-testid="btn-rescore">
-              <Sparkles size={14}/> {loadingMatch ? "Scoring…" : (matches.length ? "Re-score" : "AI Score vs resumes")}
+              <Sparkles size={14}/> {loadingMatch ? "AI re-scoring…" : (aiList.length ? "Re-run deep AI" : "Deep AI re-score")}
             </button>
             <button onClick={genCL} disabled={loadingCL || resumeCount === 0} className="nb-btn-outline inline-flex items-center gap-2" data-testid="btn-cover-letter">
               {loadingCL ? "Drafting…" : "Generate cover letter"}
@@ -136,19 +148,23 @@ export default function JobDetail() {
           )}
         </div>
 
-        {sorted.length > 0 && (
+        {allSorted.length > 0 && (
           <div className="nb-card p-6 mb-6">
-            <h2 className="font-display font-bold text-xl tracking-tight mb-4">Resume scoreboard</h2>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="font-display font-bold text-xl tracking-tight">Resume scoreboard</h2>
+              <span className="label-overline">{aiList.length > 0 ? "AI · with reasoning" : "Keyword · instant"}</span>
+            </div>
+            <p className="text-xs text-[#525252] mb-4">{aiList.length > 0 ? "Claude Sonnet 4.5 evaluated every resume against this JD." : "Fast keyword overlap. Click 'Deep AI re-score' above for narrative reasoning."}</p>
             <div className="space-y-3">
-              {sorted.map(m => (
+              {allSorted.map(m => (
                 <div key={m.resume_id} className="border-[1.5px] border-[#1E1E1E] p-3 flex items-start gap-4" data-testid={`match-row-${m.resume_id}`}>
                   <MatchBadge score={m.score} size="sm" />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold">{m.resume_name}</div>
-                    <div className="text-sm text-[#525252] mt-1">{m.reasoning}</div>
+                    {m.reasoning && <div className="text-sm text-[#525252] mt-1">{m.reasoning}</div>}
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {m.matched_skills.map(s => <span key={s} className="text-xs match-high px-2 py-0.5 border-[1.5px] border-[#1E1E1E] font-mono">+ {s}</span>)}
-                      {m.missing_skills.map(s => <span key={s} className="text-xs match-low px-2 py-0.5 border-[1.5px] border-[#1E1E1E] font-mono">− {s}</span>)}
+                      {(m.matched_skills || []).map(s => <span key={s} className="text-xs match-high px-2 py-0.5 border-[1.5px] border-[#1E1E1E] font-mono">+ {s}</span>)}
+                      {(m.missing_skills || []).slice(0, 6).map(s => <span key={s} className="text-xs match-low px-2 py-0.5 border-[1.5px] border-[#1E1E1E] font-mono">− {s}</span>)}
                     </div>
                   </div>
                 </div>

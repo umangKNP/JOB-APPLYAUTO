@@ -53,8 +53,23 @@ export default function JobCard({ job }) {
       </div>
       {best && (
         <div className="text-xs border-t-[1.5px] border-dashed border-[#E5E5E5] pt-2">
-          <span className="label-overline">Best Resume</span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="label-overline">Best Resume</span>
+            <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 border-[1.5px] border-[#1E1E1E] ${best.source === "ai" ? "bg-pastel-purple" : "bg-[#F6F4ED]"}`} data-testid={`score-source-${job.job_id}`}>
+              {best.source === "ai" ? "AI" : "KW"}
+            </span>
+          </div>
           <div className="font-semibold text-[#0A0A0A] mt-0.5">{best.resume_name}</div>
+          {best.matched_skills?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {best.matched_skills.slice(0, 4).map(s => (
+                <span key={s} className="text-[10px] match-high px-1.5 py-0.5 border-[1.5px] border-[#1E1E1E] font-mono">+ {s}</span>
+              ))}
+              {best.matched_skills.length > 4 && (
+                <span className="text-[10px] text-[#525252] font-mono">+{best.matched_skills.length - 4} more</span>
+              )}
+            </div>
+          )}
         </div>
       )}
       <div className="flex items-center justify-between gap-2 mt-1">

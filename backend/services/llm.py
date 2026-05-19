@@ -28,21 +28,28 @@ def _extract_json(text: str) -> dict:
 
 async def parse_resume_ai(text: str) -> dict:
     chat = _new_chat(
-        "You are an expert resume parser. Extract structured data. "
-        "Return STRICT JSON with keys: skills (array of 10-20 short skill strings), "
-        "summary (one paragraph career summary, max 60 words)."
+        "You are an ATS resume parser. Extract a rich, structured keyword set for job matching. "
+        "Return STRICT JSON with keys: "
+        "skills (10-20 short specific technical/tool/domain keywords as they'd appear in a JD, e.g. 'Python', 'SQL', 'AWS', 'stakeholder management'), "
+        "adjacent_skills (8-15 closely-related keywords/synonyms/adjacent tech the candidate could plausibly do — e.g. if skills include 'React' add 'Next.js', 'TypeScript'; if 'AWS' add 'GCP', 'Azure', 'CloudFormation'; if 'Marketing' add 'Brand', 'Campaign management', 'Hubspot'), "
+        "role_titles (3-6 job titles this resume targets, e.g. 'Data Analyst', 'Junior Software Engineer'), "
+        "years_experience (integer), "
+        "summary (one paragraph, max 60 words)."
     )
-    msg = UserMessage(text=f"Resume text:\n\n{text[:8000]}\n\nReturn JSON only.")
+    msg = UserMessage(text=f"Resume text:\n\n{text[:9000]}\n\nReturn JSON only, no preamble.")
     try:
         resp = await chat.send_message(msg)
         data = _extract_json(resp)
         return {
             "skills": [str(s) for s in data.get("skills", [])][:20],
-            "summary": data.get("summary", "")[:500],
+            "adjacent_skills": [str(s) for s in data.get("adjacent_skills", [])][:15],
+            "role_titles": [str(s) for s in data.get("role_titles", [])][:6],
+            "years_experience": int(data.get("years_experience") or 0),
+            "summary": str(data.get("summary", ""))[:500],
         }
     except Exception as e:
         logger.error("parse_resume_ai failed: %s", e, exc_info=True)
-        return {"skills": [], "summary": "Resume uploaded successfully."}
+        return {"skills": [], "adjacent_skills": [], "role_titles": [], "years_experience": 0, "summary": "Resume uploaded successfully."}
 
 
 async def score_match(title: str, jd: str, resume_text: str, resume_skills: list) -> dict:

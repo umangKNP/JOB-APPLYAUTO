@@ -96,11 +96,32 @@ export default function Resumes() {
                   </button>
                 </div>
                 <p className="text-sm mt-3 leading-relaxed">{r.summary || "—"}</p>
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {(r.skills || []).slice(0, 10).map(s => (
-                    <span key={s} className="text-xs border-[1.5px] border-[#1E1E1E] px-2 py-0.5 bg-[#F6F4ED] font-mono">{s}</span>
-                  ))}
+                {(r.role_titles?.length > 0 || r.years_experience > 0) && (
+                  <div className="flex items-center gap-3 mt-3 text-xs text-[#525252]">
+                    {r.years_experience > 0 && <span className="font-mono">{r.years_experience}y exp</span>}
+                    {r.role_titles?.length > 0 && (
+                      <span className="truncate">Targets: <strong className="text-[#0A0A0A]">{r.role_titles.join(", ")}</strong></span>
+                    )}
+                  </div>
+                )}
+                <div className="mt-3">
+                  <div className="label-overline mb-1">Core skills</div>
+                  <div className="flex flex-wrap gap-1">
+                    {(r.skills || []).slice(0, 12).map(s => (
+                      <span key={s} className="text-xs border-[1.5px] border-[#1E1E1E] px-2 py-0.5 bg-[#F6F4ED] font-mono">{s}</span>
+                    ))}
+                  </div>
                 </div>
+                {r.adjacent_skills?.length > 0 && (
+                  <div className="mt-3">
+                    <div className="label-overline mb-1">Adjacent / synonyms</div>
+                    <div className="flex flex-wrap gap-1">
+                      {r.adjacent_skills.slice(0, 10).map(s => (
+                        <span key={s} className="text-xs border-[1.5px] border-[#1E1E1E] px-2 py-0.5 bg-pastel-blue font-mono">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
