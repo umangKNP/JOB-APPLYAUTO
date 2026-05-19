@@ -1,0 +1,38 @@
+{
+  "summary": "Both critical iteration-1 bugs are FIXED. Backend regression: 17/17 pytest tests PASS (auth, resumes CRUD + max-5, /jobs/fetch, /jobs list + grad filter, /jobs/{id}/match via Claude, cover-letter via Claude, applications POST/GET/PATCH, preferences GET/PUT, stats, resume DELETE). Frontend e2e via mongo-injected session cookie: dashboard, job detail, tracker kanban, settings, resumes — all render and integrate with backend. AI Match + Cover Letter buttons returned 400 ONLY because the freshly seeded FE user had no resume uploaded (expected guard behaviour — verified separately in backend tests). Save-to-tracker round-trips to the Kanban Saved column.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "CORS", "issue": "server.py uses allow_origins='*' together with allow_credentials=True — invalid per CORS spec; browsers typically reject credentialed requests. Currently works only because the frontend is on the same preview host so the request is same-origin proxied. Tighten to REACT_APP_BACKEND_URL origin to be safe."},
+      {"endpoint": "services/llm.py parse_resume_ai", "issue": "Bare except swallows LLM errors silently with no log; on failure the parsed_meta returns empty skills/summary without indicating why."},
+      {"endpoint": "POST /api/jobs/fetch", "issue": "Response sometimes reports saved=0 even though 50 jobs were fetched (existing duplicates by job_id+source); not a bug but UI shows the same count. Consider returning a 'new' count vs 'refreshed' count for clarity."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "AI Match / Cover Letter on JobDetail without a resume", "issue": "Buttons issue request and surface a console 400 with no in-UI toast/banner telling the user 'Upload a resume first'. Add a friendly empty-state when /api/resumes is empty.", "affected_selectors": ["[data-testid='btn-rescore']", "[data-testid='btn-cover-letter']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_applymate_au.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "(Optional polish) Show a 'No resume uploaded — upload one in /resumes' empty-state on JobDetail when GET /api/resumes returns []; today users get a silent 400.",
+    "(Optional) Fix CORS allow_origins='*' + credentials=True; set explicit origin from REACT_APP_BACKEND_URL.",
+    "(Optional) Add logging in services/llm.py parse_resume_ai except branch."
+  ],
+  "critical_code_review_comments": [
+    "services/jobs.py _ensure_aware() fix verified — fetch_all_jobs now returns 50 jobs reliably.",
+    "server.py POST /api/applications upsert now builds set_fields without app_id/created_at — Mongo no longer rejects; PATCH and embedded-job GET also work.",
+    "Frontend api.js uses withCredentials:true + cookie session_token — works end-to-end via mongo injection.",
+    "All key interactive elements expose data-testid (verified across Dashboard, JobDetail, Tracker, Settings, Resumes, TopNav)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100% on tested flows"},
+  "test_credentials": "Mongo-injected session per /app/memory/test_credentials.md. Backend pytest fixture creates UID+TOKEN per run. Frontend e2e used token test_session_fe_1779181449_48b84d for user FE Tester.",
+  "seed_data_creation": "/tmp/test_resume.docx (Python SWE) regenerated for resume upload tests; mongo user+session+preferences inserted for FE run (not auto-cleaned — main agent may run the cleanup one-liner from test_credentials.md if desired).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 17 backend tests in /app/backend/tests/test_applymate_au.py pass in ~4s. Frontend cookie-based auth confirmed working via Mongo session injection; URL is https://jobhunt-agent.preview.emergentagent.com (from frontend/.env, NOT the host noted in review_request). For JobDetail match/cover-letter, ensure the test user has at least one resume — pytest covers that. Only remaining nits are CORS config and a friendlier empty-state when no resume is uploaded.",
+  "rca of the issue": "Iteration 1 critical bugs (1) services/jobs.py tz-naive vs tz-aware datetime compare and (2) server.py applications upsert $set+$setOnInsert app_id conflict are both resolved. Verified by re-running the full pytest regression and by exercising the live UI end-to-end with cookie-injected auth."
+}

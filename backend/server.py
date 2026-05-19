@@ -334,18 +334,18 @@ async def cover_letter(job_id: str, user: User = Depends(get_current_user)):
 async def create_application(payload: dict, user: User = Depends(get_current_user)):
     aid = f"app_{uuid.uuid4().hex[:10]}"
     now = datetime.now(timezone.utc).isoformat()
-    doc = {
-        "app_id": aid, "user_id": user.user_id,
+    set_fields = {
+        "user_id": user.user_id,
         "job_id": payload["job_id"],
         "resume_id": payload.get("resume_id"),
         "status": payload.get("status", "saved"),
         "notes": payload.get("notes", ""),
         "cover_letter": payload.get("cover_letter", ""),
-        "created_at": now, "updated_at": now,
+        "updated_at": now,
     }
     await db.applications.update_one(
         {"user_id": user.user_id, "job_id": payload["job_id"]},
-        {"$set": {k: v for k, v in doc.items() if k != "created_at"},
+        {"$set": set_fields,
          "$setOnInsert": {"created_at": now, "app_id": aid}},
         upsert=True,
     )

@@ -24,6 +24,12 @@ def _strip_html(s: str) -> str:
     return BeautifulSoup(s, "html.parser").get_text(" ", strip=True)
 
 
+def _ensure_aware(dt):
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 async def _remotive() -> List[dict]:
     try:
         async with httpx.AsyncClient(timeout=15) as hc:
@@ -34,7 +40,7 @@ async def _remotive() -> List[dict]:
     out = []
     for j in data:
         try:
-            posted = datetime.fromisoformat(j["publication_date"].replace("Z", "+00:00"))
+            posted = _ensure_aware(datetime.fromisoformat(j["publication_date"].replace("Z", "+00:00")))
         except Exception:
             posted = _now()
         title = (j.get("title") or "").lower()
@@ -63,7 +69,7 @@ async def _themuse() -> List[dict]:
     out = []
     for j in data:
         try:
-            posted = datetime.fromisoformat(j["publication_date"].replace("Z", "+00:00"))
+            posted = _ensure_aware(datetime.fromisoformat(j["publication_date"].replace("Z", "+00:00")))
         except Exception:
             posted = _now()
         locs = j.get("locations") or []
